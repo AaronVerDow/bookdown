@@ -1,0 +1,7 @@
+--- 
+title: "Lorem Ipsum Scrreport"
+date: "`r Sys.Date()`"
+documentclass: scrreport
+output: 
+  bookdown::pdf_book
+---

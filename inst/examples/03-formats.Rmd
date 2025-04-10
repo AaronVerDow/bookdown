@@ -574,6 +574,55 @@ output:
 
 ## LaTeX/PDF
 
+```{sh, echo=FALSE}
+## running in R causes issues
+
+combo_image() {
+    input_pdf="$1"
+    output_image="${2:-combined_pages.png}"
+
+    [ -f "$output_image" ] && return
+
+    temp_dir="./_bookdown_files/_cache/$( basename "$input_pdf" )"
+    mkdir -p "$temp_dir"
+
+    for page in {0..4}; do
+        convert -density 150 "$input_pdf[$page]" -background white -alpha remove "$temp_dir/page_$page.png" && continue 
+
+        # for any missing pages, copy page 0 and make it transparent
+        # this keeps the image sizes identical 
+        if [ ! -f "$temp_dir/blank.png" ]; then
+            # white page
+            # convert "$temp_dir/page_0.png" -alpha off -fill white -colorize 100% "$temp_dir/blank.png"
+           
+            # transparent page
+            convert "$temp_dir/page_0.png" -fill none -draw "color 0,0 reset" "$temp_dir/blank.png"
+        fi
+
+        cp "$temp_dir/blank.png" "$temp_dir/page_$page.png"
+    done
+
+    montage "$temp_dir"/page_*.png -background "#EEEEEE" -geometry +10+0 -tile x1 -resize x400 "$output_image"
+}
+
+render() {
+  output_dir="_book/pdf_examples"
+  pdf="$output_dir/$1.pdf"
+  if [ ! -f "$pdf" ]; then
+    Rscript -e 'library(bookdown); render_book(input="./pdf_examples/'$1'", output_dir="../../'$output_dir'")'
+    mv "$output_dir/_main.pdf" "$pdf"
+  fi
+  combo_image "$output_dir/$1.pdf" "$output_dir/$1.png"
+}
+
+render article
+render book
+render memoir
+render report
+render scrbook
+render scrreport
+```
+
 We strongly recommend that you use an HTML output format instead of LaTeX\index{LaTeX} when you develop a book, since you will not be too distracted by the typesetting details, which can bother you a lot if you constantly look at the PDF output of a book. Leave the job of careful typesetting to the very end (ideally after you have really finished the content of the book).
 
 The LaTeX/PDF output format is provided by `pdf_book()` in **bookdown**. There is not a significant difference between `pdf_book()` and the `pdf_document()` format in **rmarkdown**. The main purpose of `pdf_book()` is to resolve the labels and cross-references written using the syntax described in Sections \@ref(figures), \@ref(tables), and \@ref(cross-references). If the only output format that you want for a book is LaTeX/PDF, you may use the syntax specific to LaTeX, such as `\label{}` to label figures/tables/sections, and `\ref{}` to cross-reference them via their labels, because Pandoc supports LaTeX commands in Markdown. However, the LaTeX syntax is not portable to other output formats, such as HTML and e-books. That is why we introduced the syntax `(\#label)` for labels and `\@ref(label)` for cross-references.
@@ -596,6 +645,158 @@ The `pdf_book()` format is a general format like `html_book()`, and it also has 
 ```
 
 You can change the `base_format` function to other output format functions, and **bookdown** has provided a simple wrapper function `tufte_book2()`, which is basically `pdf_book(base_format = tufte::tufte_book)`, to produce a PDF book using the Tufte PDF style (again, see the **tufte** package).
+
+### Document Class
+
+Document class sets the layout standard. This includes whether the document is two sided, where the page numbers go, and the placement of title and table of contents. Two sided documenets are designed to be printed and bound into a book.  Page numbers are on the edge of the page, the margins vary between left and right, and blank pages are included so that new chapters always start on the right page.
+
+The section below lists the common document_classes with some sample renderings of a book.
+
+More documentation on these classes can be found here:
+* https://en.wikibooks.org/wiki/LaTeX/Document_Structure#Document_classes
+* https://www.ctan.org/pkg/koma-script
+
+**book**
+
+[![](./_book/pdf_examples/book.png)](./_book/pdf_examples/book.pdf)
+
+**report**
+
+[![](./_book/pdf_examples/report.png)](./_book/pdf_examples/report.pdf)
+
+**article**
+
+[![](./_book/pdf_examples/article.png)](./_book/pdf_examples/article.pdf)
+
+**memoir**
+
+[![](./_book/pdf_examples/memoir.png)](./_book/pdf_examples/memoir.pdf)
+
+Class with more customization options than report and
+ https://ctan.math.washington.edu/tex-archive/macros/latex/contrib/memoir/memman.pdf
+
+**scrbook**
+
+[![](./_book/pdf_examples/scrbook.png)](./_book/pdf_examples/scrbook.pdf)
+
+**scrreport**
+
+[![](./_book/pdf_examples/scrreport.png)](./_book/pdf_examples/scrreport.pdf)
+
+### Configuration Examples
+
+Below are some configuration examples, specifically for using building PDFs that are not complete books.
+
+**Disable table of contents**
+
+_index.Rmd_:
+```
+---
+toc: false
+---
+```
+
+or 
+
+_index.Rmd_:
+```
+---
+output: 
+  bookdown::pdf_book(toc=false):
+---
+```
+
+** Disable cover page **
+
+_index.Rmd_:
+```
+---
+output: 
+  bookdown::pdf_book:
+    includes:
+      in_header: preamble.tex
+---
+```
+
+_preamble.tex_:
+```
+\renewcommand{\maketitle}{}
+```
+
+** No blank pages **
+
+_index.Rmd_:
+```
+classoption: openany
+```
+
+** Center text (do not alternate sides for a book) **
+
+_index.Rmd_:
+```
+documentclass: report
+```
+
+(Add other options)
+
+** Double space **
+
+_index.Rmd_:
+```
+---
+output: 
+  bookdown::pdf_book:
+    includes:
+      in_header: preamble.tex
+---
+```
+
+_preamble.tex_:
+```
+\usepackage{setspace}
+\doublespacing
+```
+
+** Change paper size **
+
+_index.Rmd_:
+```
+---
+output: 
+  bookdown::pdf_book:
+    pandoc_args: --variable=geometry:a5paper
+---
+```
+
+** Set margins **
+
+_index.Rmd_:
+```
+---
+output: 
+  bookdown::pdf_book:
+    includes:
+      in_header: preamble.tex
+---
+```
+
+_preamble.tex_:
+```
+\usepackage{geometry}
+\usepackage{float}
+\geometry{top=1in, bottom=1in, left=1in, right=1in}
+```
+
+** Remove chapter numbers **
+
+_index.Rmd_:
+```
+---
+output: 
+  bookdown::pdf_book:
+    number_sections: false
+---
+```
 
 ## E-Books
 

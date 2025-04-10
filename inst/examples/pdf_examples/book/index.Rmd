@@ -1,0 +1,8 @@
+--- 
+title: "Lorem Ipsum Book"
+date: "`r Sys.Date()`"
+documentclass: book
+output: 
+  bookdown::pdf_book:
+    output: "book.pdf"
+---
